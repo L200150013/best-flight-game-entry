@@ -6,8 +6,11 @@
 import { stepFuel } from './flight-model.js';
 
 // Burn fuel for one step. Returns 'fuel-empty' once, the moment the tank
-// runs dry and the engine quits.
-export function burnFuel(state, dt) {
+// runs dry and the engine quits. Storm Landing opens with a 5 s grace
+// period: no burn while the mission clock is under 5 s, so the player can
+// size up the crosswind before the gauge starts moving.
+export function burnFuel(state, dt, mission) {
+  if (mission && mission.id === 'storm' && mission.timer < 5) return null;
   return stepFuel(state, dt);
 }
 

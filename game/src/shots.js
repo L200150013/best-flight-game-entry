@@ -5,7 +5,7 @@
 // draws a fake screen, moves a mesh by hand, or mocks the game: the
 // screenshots are the game itself, flown by its own code.
 //
-//   ?shot=cover    Mail Run cruise, chase cam, runway ahead
+//   ?shot=cover    Mail Run leg 1 delivered at Pulau Timur, banner + next leg
 //   ?shot=rings    Ring Rally, metres from ring 3, next ring visible
 //   ?shot=landing  Storm Landing final, gear down, flaps 2
 //   ?shot=cockpit  Mail Run cruise, cockpit cam, gauges live
@@ -31,20 +31,24 @@ export function applyShot(game, shot) {
   const stripC = stripById('barat');
   if (shot === 'cover') {
     game.startMissionById('mail');
-    // Final cruise 450 m north of Merpati Field, heading south down the
-    // flattened approach corridor: runway ahead, sea on the horizon.
-    const rad = (stripA.headingDeg * Math.PI) / 180;
-    state.pos.set(stripA.x - Math.cos(rad) * 450, stripA.elev + 75, stripA.z - Math.sin(rad) * 450);
-    state.heading = rad; // fly toward the strip
+    // Just delivered leg 1: parked on Pulau Timur's strip, gear down,
+    // throttle idle. The first mission tick fires 'leg-done' for real, so
+    // the big leg-complete banner shows and the objective advances to
+    // leg 2 — the cover proves a delivery, not just a flight.
+    const stripT = stripById('timur');
+    const rad = (stripT.headingDeg * Math.PI) / 180;
+    state.pos.set(stripT.x, stripT.elev + 1.15, stripT.z);
+    state.heading = rad; // lined up on the runway
     state.pitch = 0;
-    state.roll = -0.15;
-    state.speed = 46;
-    state.throttle = 0.62;
-    state.onGround = false;
-    state.airborne = true;
+    state.roll = 0;
+    state.speed = 0;
+    state.throttle = 0;
+    state.onGround = true;
+    state.airborne = false;
+    state.gearDown = true;
     game.setCameraMode('chase');
-    game.setAutopilot(true);
-    return { heading: state.heading, altitude: state.pos.y, speed: 46 };
+    game.setAutopilot(false);
+    return null;
   }
   if (shot === 'rings') {
     game.startMissionById('rings');

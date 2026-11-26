@@ -123,13 +123,16 @@ function showEnd(title, detail, score) {
   end.classList.remove('hidden');
 }
 
-function setMessage(text) {
+function setMessage(text, big) {
   const m = document.getElementById('hud-msg');
   if (m) {
     m.textContent = text;
     m.classList.remove('hidden');
+    m.classList.toggle('big', !!big);
     clearTimeout(setMessage.timer);
-    setMessage.timer = setTimeout(() => m.classList.add('hidden'), 4200);
+    // A leg-complete banner is the payoff proof: big, and it stays until
+    // the next HUD message replaces it instead of fading after 4.2 s.
+    if (!big) setMessage.timer = setTimeout(() => m.classList.add('hidden'), 4200);
   }
 }
 
@@ -275,7 +278,7 @@ function frame(now) {
         showEnd('MISI GAGAL', mission.failReason, `DAMAGE 100% • ${mission.timerText}`);
       }
     }
-    const fuelEvent = mission.status === 'flying' ? burnFuel(state, dt) : null;
+    const fuelEvent = mission.status === 'flying' ? burnFuel(state, dt, mission) : null;
     if (fuelEvent === 'fuel-empty') setMessage(eventMessage('fuel-empty', state));
     if (state.stalled && game.time - stallBeepAt > 0.9) {
       playStallWarning(audio);
@@ -289,7 +292,7 @@ function frame(now) {
     }
     if (missionEvent === 'leg-done') {
       playCheckpoint(audio);
-      setMessage(`PAKET TERANTAR ${mission.legsDone}/3 — lanjut ke ${mission.targetStrip.name}!`);
+      setMessage(`PAKET TERANTAR ${mission.legsDone}/3 — lanjut ke ${mission.targetStrip.name}!`, true);
     }
     if (missionEvent === 'won') {
       playMissionComplete(audio);

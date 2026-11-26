@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POS LANGIT — Sky Post | Bush Mail Pilot</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0e2a3a;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #f2ede0; }
+  #game-canvas { display: block; width: 100%; height: 100%; }
+  .hidden { display: none !important; }
+  .panel { background: rgba(12, 26, 34, 0.72); border: 1px solid rgba(242, 237, 224, 0.25);
+    border-radius: 10px; backdrop-filter: blur(2px); }
+  /* --- HUD --- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  #hud-topleft { position: absolute; top: 14px; left: 14px; padding: 10px 14px; }
+  #hud-topleft .row { display: flex; gap: 18px; }
+  #hud-topleft .cell .label { font-size: 11px; letter-spacing: 2px; color: #ffd34d; }
+  #hud-topleft .cell .value { font-size: 34px; font-weight: 800; line-height: 1.05;
+    font-variant-numeric: tabular-nums; }
+  #hud-topleft .cell .unit { font-size: 11px; color: #cfe0e8; }
+  #hud-topcenter { position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    padding: 8px 18px; text-align: center; max-width: 46vw; }
+  #hud-objective { font-size: 17px; font-weight: 700; letter-spacing: 0.4px; }
+  #hud-timer { font-size: 13px; color: #ffd34d; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  #hud-topright { position: absolute; top: 14px; right: 14px; padding: 10px 14px; width: 210px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+  .bar-row .bar-label { font-size: 11px; letter-spacing: 1px; width: 74px; color: #cfe0e8; }
+  .bar { flex: 1; height: 12px; background: rgba(255,255,255,0.16); border-radius: 6px; overflow: hidden; }
+  .bar > div { height: 100%; border-radius: 6px; transition: width 0.2s; }
+  #hud-fuel-fill { background: #2ecc71; width: 100%; }
+  #hud-fuel-fill.low { background: #e74c3c; }
+  #hud-dmg-fill { background: #f39c12; width: 0%; }
+  #hud-dmg-fill.bad { background: #e74c3c; }
+  #hud-fuel-label { font-size: 11px; color: #cfe0e8; }
+  #hud-bottomleft { position: absolute; left: 14px; bottom: 14px; padding: 10px 14px; }
+  #hud-thr-fill { background: #ffd34d; width: 0%; }
+  .chips { display: flex; gap: 8px; margin-top: 8px; }
+  .chip { font-size: 12px; font-weight: 700; letter-spacing: 1px; padding: 4px 9px;
+    border-radius: 6px; background: rgba(255,255,255,0.14); color: #dfe8ec; }
+  .chip.on { background: #2ecc71; color: #08230f; }
+  #hud-autopilot { position: absolute; right: 14px; bottom: 14px; padding: 6px 12px;
+    font-size: 12px; font-weight: 700; letter-spacing: 1px; }
+  #hud-autopilot.on { background: #1f8fff; color: #fff; }
+  #hud-warn { position: absolute; top: 96px; left: 50%; transform: translateX(-50%);
+    font-size: 22px; font-weight: 800; letter-spacing: 2px; color: #ff5a4d;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.7); animation: blink 0.7s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0.25; } }
+  #hud-msg { position: absolute; bottom: 74px; left: 50%; transform: translateX(-50%);
+    padding: 8px 18px; font-size: 16px; font-weight: 600; white-space: nowrap; }
+  #hud-score { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    font-size: 13px; color: #ffd34d; font-weight: 700; }
+  /* --- Overlays --- */
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center;
+    justify-content: center; background: rgba(8, 20, 28, 0.55); }
+  .card { width: min(620px, 92vw); padding: 28px 32px; text-align: center; }
+  .card h1 { font-size: 52px; letter-spacing: 4px; color: #ffd34d; line-height: 1; }
+  .card h2 { font-size: 15px; letter-spacing: 3px; color: #9fd4e8; margin: 6px 0 14px; font-weight: 600; }
+  .card p { font-size: 15px; line-height: 1.55; color: #e8e4d8; margin-bottom: 18px; }
+  .missions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .mission-btn { pointer-events: auto; cursor: pointer; text-align: left; padding: 12px 16px;
+    background: rgba(255, 211, 77, 0.12); border: 1px solid rgba(255, 211, 77, 0.55);
+    border-radius: 10px; color: #f2ede0; }
+  .mission-btn:hover { background: rgba(255, 211, 77, 0.28); }
+  .mission-btn .t { font-size: 18px; font-weight: 800; letter-spacing: 1px; color: #ffd34d; }
+  .mission-btn .d { font-size: 13px; color: #cfe0e8; margin-top: 2px; }
+  .controls { font-size: 12.5px; line-height: 1.7; color: #b9cdd6; text-align: left;
+    columns: 2; column-gap: 28px; margin-bottom: 8px; }
+  .controls b { color: #ffd34d; }
+  .btn { pointer-events: auto; cursor: pointer; display: inline-block; margin: 4px;
+    padding: 11px 22px; font-size: 15px; font-weight: 700; letter-spacing: 1px;
+    border-radius: 9px; border: none; background: #ffd34d; color: #231a05; }
+  .btn.ghost { background: transparent; border: 1px solid rgba(242,237,224,0.5); color: #f2ede0; }
+  #end-title { font-size: 40px; }
+  #end-detail { font-size: 16px; margin: 10px 0 4px; }
+  #end-score { font-size: 14px; color: #ffd34d; font-weight: 700; margin-bottom: 16px; }
+  #pause .card { width: auto; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="hud-topleft" class="panel">
+    <div class="row">
+      <div class="cell"><div class="label">SPEED</div><div class="value"><span id="hud-spd">0</span> <span class="unit">KT</span></div></div>
+      <div class="cell"><div class="label">ALTITUDE</div><div class="value"><span id="hud-alt">0</span> <span class="unit">FT</span></div></div>
+      <div class="cell"><div class="label">HEADING</div><div class="value"><span id="hud-hdg">090</span><span class="unit">&deg;</span></div></div>
+    </div>
+  </div>
+  <div id="hud-topcenter" class="panel">
+    <div id="hud-objective">Pilih misi untuk terbang.</div>
+    <div id="hud-timer">00:00</div>
+  </div>
+  <div id="hud-topright" class="panel">
+    <div class="bar-row"><span class="bar-label">FUEL</span><div class="bar"><div id="hud-fuel-fill"></div></div></div>
+    <div class="bar-row"><span class="bar-label">DAMAGE</span><div class="bar"><div id="hud-dmg-fill"></div></div></div>
+    <div id="hud-fuel-label">FUEL 100%</div>
+  </div>
+  <div id="hud-bottomleft" class="panel">
+    <div class="bar-row"><span class="bar-label" id="hud-thr-label">THR 0%</span><div class="bar" style="width:170px"><div id="hud-thr-fill"></div></div></div>
+    <div class="chips">
+      <span class="chip on" id="hud-gear">GEAR DOWN</span>
+      <span class="chip" id="hud-flaps">FLAPS UP</span>
+    </div>
+  </div>
+  <div id="hud-autopilot" class="panel">AUTOPILOT OFF</div>
+  <div id="hud-warn" style="visibility:hidden"></div>
+  <div id="hud-msg" class="panel hidden"></div>
+  <div id="hud-score"></div>
+</div>
+
+<div id="menu" class="overlay">
+  <div class="card panel">
+    <h1>POS LANGIT</h1>
+    <h2>SKY POST &mdash; BUSH MAIL PILOT</h2>
+    <p>Terbangkan pesawat pos <b>Merpati K-7</b> antar airstrip di kepulauan.
+       Hemat fuel, jaga kecepatan, dan mendarat dengan lembut &mdash; hard landing
+       membengkokkan gear, overspeed merusak kendali.</p>
+    <div class="missions">
+      <button class="mission-btn" data-mission="mail"><div class="t">1 &middot; MAIL RUN</div><div class="d">Antar paket pos ke 3 airstrip berurutan, lawan waktu dan fuel.</div></button>
+      <button class="mission-btn" data-mission="rings"><div class="t">2 &middot; RING RALLY</div><div class="d">Terbang melewati 8 ring berurutan &mdash; presisi lawan momentum.</div></button>
+      <button class="mission-btn" data-mission="storm"><div class="t">3 &middot; STORM LANDING</div><div class="d">Mendarat di strip pendek dengan crosswind dan fuel 25%.</div></button>
+    </div>
+    <div class="controls">
+      <div><b>W / S</b> throttle</div>
+      <div><b>&uarr; / &darr;</b> pitch (hidung naik/turun)</div>
+      <div><b>&larr; / &rarr;</b> roll (belok)</div>
+      <div><b>A / D</b> rudder</div>
+      <div><b>F</b> flaps &nbsp; <b>G</b> gear &nbsp; <b>B</b> rem</div>
+      <div><b>C</b> kamera &nbsp; <b>P</b> autopilot</div>
+      <div><b>R</b> restart &nbsp; <b>Esc</b> jeda</div>
+      <div><b>Mouse drag</b> lihat sekeliling</div>
+    </div>
+  </div>
+</div>
+
+<div id="end" class="overlay hidden">
+  <div class="card panel">
+    <h1 id="end-title">MISI SELESAI</h1>
+    <div id="end-detail"></div>
+    <div id="end-score"></div>
+    <button class="btn" id="btn-again">TERBANG LAGI</button>
+    <button class="btn ghost" id="btn-end-menu">MENU</button>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="card panel">
+    <h1 id="pause-title">JEDA</h1>
+    <p>Tekan Esc untuk lanjut terbang.</p>
+    <button class="btn" id="btn-resume">LANJUT</button>
+    <button class="btn ghost" id="btn-menu">MENU</button>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
